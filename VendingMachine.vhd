@@ -104,24 +104,62 @@ BEGIN
                         WHEN OTHERS => TranslatedKeyboardOutput <= "1111";
                     END CASE;
 
-                    IF (TranslatedKeyboardOutput = "1010") THEN
+                    IF (TranslatedKeyboardOutput = "1010") THEN -- Botão Clear
                         AlgorismPosition <= '0';
                         FinalKeyboardOutput <= "11111111";
-                    ELSIF (FinalKeyboardOutput(7 DOWNTO 4) /= "1111" AND TranslatedKeyboardOutput = "1011") THEN
+                    ELSIF (AlgorismPosition = '1' AND FinalKeyboardOutput(7 DOWNTO 4) /= "1111" AND TranslatedKeyboardOutput = "1011") THEN -- Botão OK e Último Algorismo já preenchido
+                        CASE FinalKeyboardOutput IS
+                            WHEN "00000000" => SelectedItem <= "0000"; -- 00
+                            WHEN "00000001" => SelectedItem <= "0001"; -- 01
+                            WHEN "00000010" => SelectedItem <= "0010"; -- 02
+                            WHEN "00000011" => SelectedItem <= "0011"; -- 03
+                            WHEN "00000100" => SelectedItem <= "0100"; -- 04
+                            WHEN "00000101" => SelectedItem <= "0101"; -- 05
+                            WHEN "00000110" => SelectedItem <= "0110"; -- 06
+                            WHEN "00000111" => SelectedItem <= "0111"; -- 07
+                            WHEN "00001000" => SelectedItem <= "1000"; -- 08
+                            WHEN "00001001" => SelectedItem <= "1001"; -- 09
+                            WHEN "00010000" => SelectedItem <= "1010"; -- 10
+                            WHEN "00010001" => SelectedItem <= "1011"; -- 11
+                            WHEN "00010010" => SelectedItem <= "1100"; -- 12
+                            WHEN "00010011" => SelectedItem <= "1101"; -- 13
+                            WHEN "00010100" => SelectedItem <= "1110"; -- 14
+                            WHEN "00010101" => SelectedItem <= "1111"; -- 15
+                            WHEN OTHERS => SelectedItem <= "ZZZZ";
+                        END CASE;
                         UnlockDoor <= '1';
                     ELSE
                         IF (AlgorismPosition = '0') THEN
-                            FinalKeyboardOutput (3 DOWN 0) <= TranslatedKeyboardOutput;
-                            AlgorismPosition = '1';
+                            CASE TranslatedKeyboardOutput IS
+                                WHEN "0000" => -- 0
+                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput;
+                                    AlgorismPosition <= '1';
+                                WHEN "0001" => -- 1
+                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput;
+                                    AlgorismPosition <= '1';
+                                WHEN OTHERS =>
+                                    FinalKeyboardOutput (3 DOWNTO 0) <= "1111";
+                                    AlgorismPosition <= '0';
+                            END CASE;
                         ELSE
-                            FinalKeyboardOutput (7 DOWN 4) <= TranslatedKeyboardOutput;
+                            CASE TranslatedKeyboardOutput IS
+                                WHEN "0000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 0 
+                                WHEN "0001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 1
+                                WHEN "0010" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 2
+                                WHEN "0011" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 3
+                                WHEN "0100" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 4
+                                WHEN "0101" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 5
+                                WHEN "0110" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 6
+                                WHEN "0111" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 7
+                                WHEN "1000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 8
+                                WHEN "1001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 9
+                                WHEN OTHERS => FinalKeyboardOutput (7 DOWNTO 4) <= "1111";
+                            END CASE;
                         END IF;
                     END IF;
-
-                    CanRead <= '0';
                 END IF;
             ELSE
-                IF (AlgorismPosition = '1' AND UnlockDoor = '1' AND KeyboardOutput = "1011") THEN
+                IF (AlgorismPosition = '1' AND FinalKeyboardOutput(7 DOWNTO 4) /= "1111" AND KeyboardOutput = "1011") THEN
                     UnlockDoor <= '0';
                     AlgorismPosition <= '0';
                 END IF;
