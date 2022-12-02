@@ -163,7 +163,7 @@ BEGIN
                                 WHEN "0001" => -- 1
                                     FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput; -- Coloca o output do traduzido do teclado para os 4 primeiros bits do output final
                                     AlgorismPosition <= '1';
-                                WHEN OTHERS => 
+                                WHEN OTHERS =>
                                     FinalKeyboardOutput (3 DOWNTO 0) <= "ZZZZ";
                                     AlgorismPosition <= '0';
                             END CASE; -- O dígito inicial só pode ser 0 ou 1, se for outros dígitos, ignora
