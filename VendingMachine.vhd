@@ -1,3 +1,6 @@
+-- Vinícius Meng
+-- 0250583
+
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 ENTITY Keyboard IS
@@ -54,20 +57,43 @@ BEGIN
     END PROCESS;
 END logic;
 
+-- Acima toda a lógica para capturar teclado conforme visto em aula anteriormente
+
+-- Abaixo toda a lógica para a máquina automática de vendas
+-- A máquina vende 16 produtos diferentes organizados num grid 4x4
+-- O teclado dá máquina também é organizado num grid 4x4, mas a quarta linha é ignorada, dessa forma ficando um grid 4x3:
+
+-- 0  1   2   3
+-- 4  5   6   7
+-- 8  9 Clear Ok
+
+-- Pessoa insere o dinheiro, máquina libera teclado para uso
+-- Pessoa insere primeiro dígito, depois o segundo dígito do produto que deseja, os produtos possíveis são:
+
+-- 00 01 02 03
+-- 04 05 06 07
+-- 08 09 10 11
+-- 12 13 14 15
+
+-- O produto só é confirmado quando a pessoa digita dois dígitos e pressiona Ok
+-- Caso a pessoa erre o dígito, ela pode apertar em Clear, que limpa o que havia sido pressionado até o momento
+-- Quando a pessoa apertar Ok com dois dígitos possíveis pressionados, um sinal para a abertura da porta de retirada de produtos será mandado
+-- Além de enviar qual produto deve cair na porta de retirada
+
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.numeric_std.ALL;
 ENTITY VendingMachine IS
     PORT (
-        Clock : IN STD_LOGIC;
-        MoneyRead : IN STD_LOGIC;
-        Column : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
-        SelectedItem : OUT STD_LOGIC_VECTOR (3 DOWNTO 0);
-        UnlockDoor : BUFFER STD_LOGIC
+        Clock : IN STD_LOGIC; -- clock de entrada
+        MoneyRead : IN STD_LOGIC; -- entrada que indica se foi lido dinheiro, o que libera para digitar o número do produto
+        Column : IN STD_LOGIC_VECTOR (3 DOWNTO 0); -- entradas que indicam qual coluna do teclado foi apertada
+        SelectedItem : OUT STD_LOGIC_VECTOR (3 DOWNTO 0); -- saídas que indicam qual produto foi selecionado (4 bits representando 0 até 15)
+        UnlockDoor : BUFFER STD_LOGIC -- saída que indica que a porta pode ser aberta (ela fica destrancada)
     );
 END VendingMachine;
 ARCHITECTURE logic OF VendingMachine IS
-    COMPONENT Keyboard IS
+    COMPONENT Keyboard IS -- Componente do teclado
         PORT (
             clk : IN STD_LOGIC;
             col : IN STD_LOGIC_VECTOR (3 DOWNTO 0);
@@ -75,19 +101,19 @@ ARCHITECTURE logic OF VendingMachine IS
             dav : OUT STD_LOGIC
         );
     END COMPONENT;
-    SIGNAL KeyboardOutput : STD_LOGIC_VECTOR (3 DOWNTO 0) := "ZZZZ";
-    SIGNAL TranslatedKeyboardOutput : STD_LOGIC_VECTOR (3 DOWNTO 0) := "ZZZZ";
-    SIGNAL FinalKeyboardOutput : STD_LOGIC_VECTOR (7 DOWNTO 0) := "ZZZZZZZZ";
-    SIGNAL AlgorismPosition : STD_LOGIC := '0';
-    SIGNAL CanRead : STD_LOGIC := '0';
+    SIGNAL KeyboardOutput : STD_LOGIC_VECTOR (3 DOWNTO 0) := "ZZZZ"; -- Sinal que armazena a saída do componente do teclado (2 bits coluna e 2 bits linha)
+    SIGNAL TranslatedKeyboardOutput : STD_LOGIC_VECTOR (3 DOWNTO 0) := "ZZZZ"; -- Sinal que armazena o sinal da saída do teclado traduzido (4 bits representando um número 0 até 15)
+    SIGNAL FinalKeyboardOutput : STD_LOGIC_VECTOR (7 DOWNTO 0) := "ZZZZZZZZ"; -- Sinal que armazena o output final do teclado (4 bits para o primeiro dígito (0 ou 1) e 4 bits para o segundo dígito (0 - 9))
+    SIGNAL AlgorismPosition : STD_LOGIC := '0'; -- Indica qual dígito está sendo digitado (os 4 primeiro bits do output final ou os 4 últimos bits do output final)
+    SIGNAL CanRead : STD_LOGIC := '0'; -- Indica se a saída do teclado pode ser lida
 BEGIN
-    U1 : Keyboard PORT MAP(clk => Clock, col => Column, d => KeyboardOutput, dav => CanRead);
+    U1 : Keyboard PORT MAP(clk => Clock, col => Column, d => KeyboardOutput, dav => CanRead); -- Mapea os sinais para o componente do teclado
 
-    PROCESS (Clock)
+    PROCESS (Clock) -- Processa a entrada do clock
     BEGIN
-        IF (Clock'EVENT AND Clock = '1') THEN
-            IF (MoneyRead = '1') THEN
-                IF (CanRead = '1') THEN
+        IF (Clock'EVENT AND Clock = '1') THEN -- Quando for a borda de subida do clock
+            IF (MoneyRead = '1') THEN -- Quando o dinheiro tiver sido lido
+                IF (CanRead = '1') THEN -- Quando a saída do teclado pode ser lida
                     CASE KeyboardOutput IS
                         WHEN "0000" => TranslatedKeyboardOutput <= "0000"; -- 0
                         WHEN "0001" => TranslatedKeyboardOutput <= "0001"; -- 1
@@ -102,12 +128,12 @@ BEGIN
                         WHEN "1010" => TranslatedKeyboardOutput <= "1010"; -- Clear
                         WHEN "1011" => TranslatedKeyboardOutput <= "1011"; -- Ok
                         WHEN OTHERS => TranslatedKeyboardOutput <= "ZZZZ";
-                    END CASE;
+                    END CASE; -- Traduz a saída coluna-linha do teclado para um número
 
-                    IF (TranslatedKeyboardOutput = "1010") THEN -- Botão Clear
-                        AlgorismPosition <= '0';
-                        FinalKeyboardOutput <= "ZZZZZZZZ";
-                    ELSIF (AlgorismPosition = '1' AND FinalKeyboardOutput(7 DOWNTO 4) /= "ZZZZ" AND TranslatedKeyboardOutput = "1011") THEN -- Botão OK e Último Algorismo já preenchido
+                    IF (TranslatedKeyboardOutput = "1010") THEN -- Se for apertado o botão Clear
+                        AlgorismPosition <= '0'; -- Posição do dígito volta para o ínicio
+                        FinalKeyboardOutput <= "ZZZZZZZZ"; -- Limpa o output final
+                    ELSIF (AlgorismPosition = '1' AND FinalKeyboardOutput(7 DOWNTO 4) /= "ZZZZ" AND TranslatedKeyboardOutput = "1011") THEN -- Se botão OK for apertado, estiver no último dígito e último digito tiver sido preenchido com algo
                         CASE FinalKeyboardOutput IS
                             WHEN "00000000" => SelectedItem <= "0000"; -- 00
                             WHEN "00000001" => SelectedItem <= "0001"; -- 01
@@ -126,23 +152,37 @@ BEGIN
                             WHEN "00010100" => SelectedItem <= "1110"; -- 14
                             WHEN "00010101" => SelectedItem <= "1111"; -- 15
                             WHEN OTHERS => SelectedItem <= "ZZZZ";
-                        END CASE;
-                        UnlockDoor <= '1';
+                        END CASE; -- Coloca na saída o número do produto que foi selecionado
+                        UnlockDoor <= '1'; -- Coloca o sinal de saída indicando para abrir a porta
                     ELSE
-                        IF (AlgorismPosition = '0') THEN
+                        IF (AlgorismPosition = '0') THEN -- Se a posição do dígito for o dígito de ínicio
                             CASE TranslatedKeyboardOutput IS
                                 WHEN "0000" => -- 0
-                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput;
+                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput; -- Coloca o output do traduzido do teclado para os 4 primeiros bits do output final
                                     AlgorismPosition <= '1';
                                 WHEN "0001" => -- 1
-                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput;
+                                    FinalKeyboardOutput (3 DOWNTO 0) <= TranslatedKeyboardOutput; -- Coloca o output do traduzido do teclado para os 4 primeiros bits do output final
                                     AlgorismPosition <= '1';
-                                WHEN OTHERS =>
+                                WHEN OTHERS => 
                                     FinalKeyboardOutput (3 DOWNTO 0) <= "ZZZZ";
                                     AlgorismPosition <= '0';
-                            END CASE;
-                        ELSE
-                            IF (FinalKeyboardOutput (3 DOWNTO 0) = "0000") THEN
+                            END CASE; -- O dígito inicial só pode ser 0 ou 1, se for outros dígitos, ignora
+                        ELSE -- Se a posição do dígito for o dígito final
+                            IF (FinalKeyboardOutput (3 DOWNTO 0) = "0000") THEN -- Se o primeiro dígito for 0
+                                CASE TranslatedKeyboardOutput IS
+                                    WHEN "0000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 0  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 1  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0010" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 2  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0011" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 3  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0100" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 4  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0101" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 5  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0110" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 6  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "0111" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 7  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "1000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 8  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN "1001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 9  Coloca o output do traduzido do teclado para os 4 últimos bits do output final
+                                    WHEN OTHERS => FinalKeyboardOutput (7 DOWNTO 4) <= "ZZZZ";
+                                END CASE; -- Como o primeiro dígito é zero, permite que o segundo dígito seja apenas do 0 até 9, o resto ignora
+                            ELSE -- Se o primeiro dígito for 1
                                 CASE TranslatedKeyboardOutput IS
                                     WHEN "0000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 0 
                                     WHEN "0001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 1
@@ -150,30 +190,16 @@ BEGIN
                                     WHEN "0011" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 3
                                     WHEN "0100" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 4
                                     WHEN "0101" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 5
-                                    WHEN "0110" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 6
-                                    WHEN "0111" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 7
-                                    WHEN "1000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 8
-                                    WHEN "1001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 9
                                     WHEN OTHERS => FinalKeyboardOutput (7 DOWNTO 4) <= "ZZZZ";
-                                END CASE;
-                            ELSE
-                                CASE TranslatedKeyboardOutput IS
-                                    WHEN "0000" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 0 
-                                    WHEN "0001" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 1
-                                    WHEN "0010" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 2
-                                    WHEN "0011" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 3
-                                    WHEN "0100" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 4
-                                    WHEN "0101" => FinalKeyboardOutput (7 DOWNTO 4) <= TranslatedKeyboardOutput; -- 5
-                                    WHEN OTHERS => FinalKeyboardOutput (7 DOWNTO 4) <= "ZZZZ";
-                                END CASE;
+                                END CASE; -- Como o primeiro dígito é 1, permite que o segundo dígito seja apenas do 0 até 5, o resto ignora
                             END IF;
                         END IF;
                     END IF;
                 END IF;
-            ELSE
-                IF (UnlockDoor = '1' AND TranslatedKeyboardOutput = "1011") THEN
-                    SelectedItem <= "ZZZZ";
-                    UnlockDoor <= '0';
+            ELSE -- Se não tiver lido dinheiro
+                IF (UnlockDoor = '1' AND TranslatedKeyboardOutput = "1011") THEN -- Se a porta está aberta e o último botão apertado foi o Ok
+                    SelectedItem <= "ZZZZ"; -- Limpa item selecionado
+                    UnlockDoor <= '0'; -- Tranca a porta
                 END IF;
             END IF;
         END IF;
